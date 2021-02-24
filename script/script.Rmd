@@ -12,14 +12,6 @@ library(rio)
 library(here)
 library(janitor)
 
-library(magrittr)
-library(stringr)
-library(here)
-library(kableExtra)
-library(corx)
-library(broom)
-library(sjmisc)
-library(scales)
 ```
 
 ## R Markdown
