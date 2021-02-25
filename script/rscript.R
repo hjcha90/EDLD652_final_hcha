@@ -2,6 +2,8 @@ library(tidyverse)
 library(rio)
 library(here)
 library(janitor)
+library(usmap)
+library(ggpubr)
 
 
 covid <- import(here("data", "covid-data-01-30-2021.csv")) %>% 
@@ -11,47 +13,74 @@ covid <- import(here("data", "covid-data-01-30-2021.csv")) %>%
 soccap <- import(here("data", "social-capital-project-state-index.xlsx")) %>% 
   clean_names() #load social capital data for 1997
 
+soccap_covid <- soccap %>% 
+  left_join(covid, by = c("state" = "province_state"))
 
-#Plot part 1. Covid cases, deaths, and testing by state
-data_plot1 <- covid %>%
-  filter(fips <= 56) %>% #choose only US states
-  select(province_state, confirmed, deaths, total_test_results) %>% 
-  pivot_longer(!province_state, names_to = "type", values_to = "count") 
+data_plota <- soccap_covid %>%
+  select(state, confirmed, deaths, total_test_results)
 
-data_plot1 %>%
-  mutate(province_state = fct_reorder(province_state, count))  %>% 
-  ggplot(aes(province_state, count/1000)) +
-  geom_col(fill = "steelblue1", alpha = 0.7) + 
-  facet_wrap(~type) +
+
+plot_usmap(data = soccap_covid, regions = "states", values = "state_level_index", labels = TRUE) +
+  scale_fill_continuous(low = "white", 
+                        high = "steelblue1", 
+  ) + 
+  theme(panel.background = element_rect(color = "black", fill = "white")) + 
+  theme(legend.position = "none") + 
+  labs(title = "2000")
+
+
+state_covid_test <- data_plota %>%
+  mutate(state = fct_reorder(state, total_test_results))  %>% 
+  ggplot(aes(state, total_test_results/1000)) +
+  geom_col(fill = "deepskyblue3", alpha = 0.7) + 
   coord_flip() + 
   theme_minimal()
 
-#I tried faceting cases, deaths and testing but the number for testing is too big compared to two other metricss
-
-data_plot2 <- covid %>%
-  filter(fips <= 56) %>% #choose only US states
-  select(province_state, confirmed, deaths, total_test_results)
-
-data_plot2 %>%
-  mutate(province_state = fct_reorder(province_state, total_test_results))  %>% 
-  ggplot(aes(province_state, total_test_results / 1000)) +
-  geom_col(fill = "steelblue1", alpha = 0.7) + 
+state_covid_case <- data_plota %>%
+  mutate(state = fct_reorder(state, confirmed))  %>% 
+  ggplot(aes(state, confirmed/1000)) +
+  geom_col(fill = "darkorange", alpha = 0.7) + 
   coord_flip() + 
   theme_minimal()
 
-data_plot2 %>%
-  mutate(province_state = fct_reorder(province_state, confirmed))  %>% 
-  ggplot(aes(province_state, confirmed / 1000)) +
-  geom_col(fill = "steelblue1", alpha = 0.7) + 
+state_covid_death <- data_plota %>%
+  mutate(state = fct_reorder(state, deaths))  %>% 
+  ggplot(aes(state, deaths/1000)) +
+  geom_col(fill = "brown1", alpha = 0.7) + 
   coord_flip() + 
   theme_minimal()
 
-data_plot2 %>%
-  mutate(province_state = fct_reorder(province_state, deaths))  %>% 
-  ggplot(aes(province_state, deaths / 1000)) +
-  geom_col(fill = "steelblue1", alpha = 0.7) + 
+covid_plots <- ggarrange(state_covid_test,
+                         state_covid_case,
+                         state_covid_death,
+                         ncol = 3,
+                         nrow = 1)
+covid_plots
+
+state_covid_altogether <- data_plota %>%
+  mutate(state = fct_reorder(state, total_test_results))  %>% 
+  pivot_longer(!state, names_to = "type", values_to = "count") %>%
+  ggplot(aes(state, count/1000, fill = type)) +
+  geom_col(position = "dodge2") + 
+  scale_fill_brewer(palette = "Dark2") + 
   coord_flip() + 
   theme_minimal()
+state_covid_altogether
+
+
+
+
+
+
+
+#Combine 4 US Religious Social Capital Maps in 1 plot
+covid_plots <- ggarrange(state_covid_test,
+                          state_covid_case,
+                          state_covid_death,
+                          ncol = 3,
+                          nrow = 1)
+
+covid_plots
 
 
 plot1_refined
