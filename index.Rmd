@@ -17,6 +17,7 @@ library(janitor)
 library(usmap)
 library(ggpubr)
 library(reactable)
+library(magrittr)
 ```
 
 
@@ -26,10 +27,16 @@ covid <- import(here("data", "covid-data-01-30-2021.csv")) %>%
   as_tibble() #load covid data
 
 soccap <- import(here("data", "social-capital-project-state-index.xlsx")) %>% 
-  clean_names() #load social capital data for 1997
+  clean_names() %>%
+  as_tibble() #load state level social capital data 
 
 soccap_covid <- soccap %>% 
   left_join(covid, by = c("state" = "province_state"))
+
+soccap_county <- import(here("data", "social-capital-project-county-index.xlsx")) %>% 
+  clean_names() %>% 
+  as_tibble() %>% 
+  rename(fips = fips_code) #load county level social capital data 
 
 ```
 
@@ -45,17 +52,15 @@ These figures use data from two different sources:
 
 **Visualization #1**
 
-jj
-
+Covid-19 testing, cases, and deaths by each state.
 
 **Visualization #2**
 
-jj
-
+Mapping state-level social Capital index.
 
 **Visualization #3**
 
-jj
+Regressions examining the relationship between social capital index and Covid-19 metrics.
 
 
 
@@ -77,7 +82,7 @@ reactable(soccap_covid_clean)
 Visualization #1: Covid-19 {data-icon="fa-signal"}
 =====================================     
 
-Column 1 {data-width=700}
+Column 1 {data-width=400}
 -----------------------------------------------------------------------
 ### Candidate A
 
@@ -119,7 +124,7 @@ covid_plots
 
 ```
 
-Column 2 {data-width=700}
+Column 2 {data-width=400}
 -----------------------------------------------------------------------
 ### Candidate B
 ```{r}
@@ -139,12 +144,12 @@ state_covid_altogether
 Visualization #2: Social Capital Index {data-icon="fa-signal"}
 ===================================== 
 
-Column 1 {data-width=700}
+Column 1 {data-width=800}
 -----------------------------------------------------------------------
 ### State Level Index
     
 ```{r}
-plot_usmap(data = soccap_covid, regions = "states", values = "state_level_index", labels = TRUE) +
+plot_usmap(data = soccap_covid_clean, regions = "states", values = "state_level_index", labels = TRUE) +
   scale_fill_continuous(low = "white", 
                         high = "steelblue1") + 
   theme(panel.background = element_rect(color = "black", fill = "white")) + 
@@ -152,27 +157,63 @@ plot_usmap(data = soccap_covid, regions = "states", values = "state_level_index"
   labs(title = "State-Level Overall Social Capital Index",
        subtitle = "Thicker color indicates higher levels of social capital index")
 
-
 ```
     
-### Chart 2
+### County Level Index in Oregon
 
 ```{r}
+plot_usmap(data = soccap_county, include = c("OR"), 
+           regions = "counties", values = "county_level_index", labels = TRUE) +
+  scale_fill_continuous(low = "white", 
+                        high = "steelblue1") + 
+  theme(panel.background = element_rect(color = "black", fill = "white")) + 
+  theme(legend.position = "none") + 
+  labs(title = "County-Level Overall Social Capital Index in Oregon",
+       subtitle = "Thicker color indicates higher levels of social capital index")
+
 ```
 
+Visualization #3: Regressions {data-icon="fa-signal"}
+===================================== 
+Column 1 {data-width=400}
 -----------------------------------------------------------------------
 
-### Table
-
 ```{r}
-#I tried faceting cases, deaths and testing but the number for testing is too big compared to two other metricss
+soccap_covid_clean %<>%
+  mutate(positivity = confirmed / total_test_results, fatality = deaths / confirmed) 
 
-
+soccap_covid_clean %>% 
+  ggplot(aes(state_level_index, positivity)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", color = "black", se = FALSE) + 
+  labs(title = "Relationship between Social Capital and Covid-19 Positivity",
+       x = "State Level Social Capital Index",
+       y = "Posivitity Rate (%)") + 
+  theme(panel.background = element_rect(color = "black", fill = "white")) 
 ```
 
-### Chart C
-
 ```{r}
-
+model1a <- lm(positivity ~ state_level_index, data = soccap_covid_clean)
+summary(model1a)
 ```
 
+Column 2 {data-width=400}
+-----------------------------------------------------------------------
+```{r}
+model2a <- lm(fatality ~ state_level_index, data = soccap_covid_clean)
+model2b <- lm(fatality ~ family_unity + family_interaction + social_support + community_health + institutional_health + collective_efficacy + philanthropic_health, data = soccap_covid_clean)
+
+soccap_covid_clean %>% 
+  ggplot(aes(state_level_index, fatality)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", color = "black", se = FALSE) + 
+  labs(title = "Relationship between Social Capital and Covid-19 Fatality",
+       x = "State Level Social Capital Index",
+       y = "Fatality Rate (%)") + 
+  theme(panel.background = element_rect(color = "black", fill = "white")) 
+```
+
+```{r}
+model2a <- lm(fatality ~ state_level_index, data = soccap_covid_clean)
+summary(model2a)
+```
