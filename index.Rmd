@@ -87,6 +87,8 @@ Column 1 {data-width=400}
 ### Candidate A
 
 ```{r}
+#I'm a fan of Candidate A, since you can see the different configuration of the states and the difference in scales makes it almost impossible to see deaths in Candidate B. Reisizing the graph to make it taller will help viewers read the state names bette, and angling the x axis and reducing the text elements (I believe R will automatically do this if you change the variable to a factor) will also improve readability. I like the use of colors! 
+
 #Plot part 1. Covid cases, deaths, and testing by state
 data_plota <- soccap_covid_clean %>%
   select(state, confirmed, deaths, total_test_results)
@@ -149,6 +151,8 @@ Column 1 {data-width=800}
 ### State Level Index
     
 ```{r}
+#I think it might look nicer to display these in a row rather than a column. Making the graphs interactive, so that the names only show up if you hover over the state or county would fix the problem with overlapping labels. 
+
 plot_usmap(data = soccap_covid_clean, regions = "states", values = "state_level_index", labels = TRUE) +
   scale_fill_continuous(low = "white", 
                         high = "steelblue1") + 
@@ -179,6 +183,8 @@ Column 1 {data-width=400}
 -----------------------------------------------------------------------
 
 ```{r}
+#Love the regression print out at the bottom! Here, it could be helpful to provide more detail about what the State Level Social Capital Index is. 
+
 soccap_covid_clean %<>%
   mutate(positivity = confirmed / total_test_results, fatality = deaths / confirmed) 
 
