@@ -124,6 +124,8 @@ covid_plots
 
 ```
 
+#### Comment: The visualization is easy to understand and read by descending order. I would suggest to stretch them out a bit more by increasing the fig.height, so the labels aren't so smashed together. It may also good to rename the legend label and legend title so the plot looks more delicate.
+
 Column 2 {data-width=400}
 -----------------------------------------------------------------------
 ### Candidate B
@@ -173,6 +175,8 @@ plot_usmap(data = soccap_county, include = c("OR"),
 
 ```
 
+#### Comment: This is a good use of geographic data mapping for both US states and Oregon. The labels for geographically smaller areas are smashed together. I wonder if it is better to use a different labelling method for those states/counties. For example, you can place the label for those area on the white area of the plot and connect the labels and areas with a line. 
+
 Visualization #3: Regressions {data-icon="fa-signal"}
 ===================================== 
 Column 1 {data-width=400}
@@ -217,3 +221,5 @@ soccap_covid_clean %>%
 model2a <- lm(fatality ~ state_level_index, data = soccap_covid_clean)
 summary(model2a)
 ```
+
+#### Comment: I really how you report the model information and the visualization of models together. It is very helpful to read. The only nitpicking I have is that maybe it is better to add regression equations on the plots. Also, you may add some text to interpret the models and plots.   
