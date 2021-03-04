@@ -124,7 +124,7 @@ covid_plots
 
 ```
 
-#### Comment: The visualization is easy to understand and read by descending order. I would suggest to stretch them out a bit more by increasing the fig.height, so the labels aren't so smashed together. It may also good to rename the legend label and legend title so the plot looks more delicate.
+#### Comment: The visualization is easy to understand and read by descending order. I would suggest to stretch them out a bit more, so the labels aren't so smashed together. It may also good to rename the legend label and legend title so the plot looks more delicate.
 
 Column 2 {data-width=400}
 -----------------------------------------------------------------------
