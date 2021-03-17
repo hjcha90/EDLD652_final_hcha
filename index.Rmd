@@ -1,7 +1,7 @@
 ---
-title: "EDLD652_final"
+title: "Covid-19 and Social Capital"
 author: "Hyeonjin Cha"
-date: "2/24/2021"
+date: "3/17/2021"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -40,15 +40,22 @@ soccap_county <- import(here("data", "social-capital-project-county-index.xlsx")
 
 ```
 
-Data Source {.sidebar}
-==========
+
+Raw Data {data-icon="fa-table"}
+======================================================================
+
+What is this? {.sidebar}
+----------------------------------------------------------------------
+
 **Data Source**
 
-These figures use data from two different sources:
+The visualizations utilize data from two different sources:
 
-1) State-Level Social Capital Index: Social Capital Project by the United States Congress Joint Economic Committee (https://www.jec.senate.gov/public/index.cfm/republicans/2018/4/the-geography-of-social-capital-in-america)
+1) State-Level Social Capital Index: [Social Capital Project by the United States Congress Joint Economic Committee](https://www.worldvaluessurvey.org/WVSNewsShowMore.jsp?evYEAR=2020&evMONTH=-1)
 
-2) State-Level Covid-19 Statistics: COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University (https://github.com/CSSEGISandData/COVID-19)
+2) State-Level Covid-19 Statistics: [COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University](https://github.com/CSSEGISandData/COVID-19)
+
+**Key Variables**
 
 **Visualization #1**
 
@@ -63,9 +70,8 @@ Mapping state-level social Capital index.
 Regressions examining the relationship between social capital index and Covid-19 metrics.
 
 
-
-Raw Data {data-icon="fa-table"}
-=====================================     
+Column {.tabset}
+-----------------------------------------------------------------------
 ### Raw Data
 ```{r}
 soccap_covid_clean <- soccap_covid %>% 
@@ -80,12 +86,75 @@ reactable(soccap_covid_clean)
 ```
 
 Visualization #1: Covid-19 {data-icon="fa-signal"}
-=====================================     
+===================================== 
+Description {.sidebar}
+----------------------------------------------------------------------
 
-Column 1 {data-width=400}
+**Visualization #1**
+
+
+Column {.tabset}
 -----------------------------------------------------------------------
-### Candidate A
 
+### Initial Draft
+
+```{r}
+#Plot part 1. Covid cases, deaths, and testing by state
+data_plota <- soccap_covid_clean %>%
+  select(state, confirmed, deaths, total_test_results)
+
+
+state_covid_altogether <- data_plota %>%
+  mutate(state = fct_reorder(state, total_test_results))  %>% 
+  pivot_longer(!state, names_to = "type", values_to = "count") %>%
+  ggplot(aes(state, count/1000, fill = type)) +
+  geom_col(position = "dodge2") + 
+  scale_fill_brewer(palette = "Dark2") + 
+  coord_flip() + 
+  theme_minimal()
+state_covid_altogether
+
+```
+
+### Revised Plot
+
+```{r}
+#Plot part 1. Covid cases, deaths, and testing by state
+
+state_covid_test <- data_plota %>%
+  mutate(state = fct_reorder(state, total_test_results))  %>% 
+  ggplot(aes(state, total_test_results/1000)) +
+  geom_col(fill = "deepskyblue3", alpha = 0.7) + 
+  coord_flip() +
+  labs(x = "State", subtitle = "Tests", y="") + 
+  theme_minimal()
+
+state_covid_case <- data_plota %>%
+  mutate(state = fct_reorder(state, confirmed))  %>% 
+  ggplot(aes(state, confirmed/1000)) +
+  geom_col(fill = "darkorange", alpha = 0.7) + 
+  coord_flip() +
+  labs(x = " ", subtitle = "Cases", y = "Counts by 1000") + 
+  theme_minimal()
+
+state_covid_death <- data_plota %>%
+  mutate(state = fct_reorder(state, deaths))  %>% 
+  ggplot(aes(state, deaths/1000)) +
+  geom_col(fill = "brown1", alpha = 0.7) + 
+  coord_flip() + 
+  labs(x = " ", subtitle = "Deaths", y = "") + 
+  theme_minimal()
+
+covid_plots <- ggarrange(state_covid_test,
+                         state_covid_case,
+                         state_covid_death,
+                         ncol = 3,
+                         nrow = 1)
+covid_plots
+
+```
+
+### Final Plot
 ```{r}
 #Plot part 1. Covid cases, deaths, and testing by state
 data_plota <- soccap_covid_clean %>%
@@ -124,27 +193,17 @@ covid_plots
 
 ```
 
-Column 2 {data-width=400}
------------------------------------------------------------------------
-### Candidate B
-```{r}
-#Plot part 1. Covid cases, deaths, and testing by state
-state_covid_altogether <- data_plota %>%
-  mutate(state = fct_reorder(state, total_test_results))  %>% 
-  pivot_longer(!state, names_to = "type", values_to = "count") %>%
-  ggplot(aes(state, count/1000, fill = type)) +
-  geom_col(position = "dodge2") + 
-  scale_fill_brewer(palette = "Dark2") + 
-  coord_flip() + 
-  theme_minimal()
-state_covid_altogether
 
-```
 
 Visualization #2: Social Capital Index {data-icon="fa-signal"}
 ===================================== 
+Description {.sidebar}
+----------------------------------------------------------------------
 
-Column 1 {data-width=800}
+**Visualization #2**
+
+
+Column {.tabset}
 -----------------------------------------------------------------------
 ### State Level Index
     
@@ -154,6 +213,8 @@ plot_usmap(data = soccap_covid_clean, regions = "states", values = "state_level_
                         high = "steelblue1") + 
   theme(panel.background = element_rect(color = "black", fill = "white")) + 
   theme(legend.position = "none") + 
+  scale_fill_distiller(palette = "RdBu", direction = -1) +
+  theme(legend.position = c(1, 3), plot.title = element_text(hjust=1)) +
   labs(title = "State-Level Overall Social Capital Index",
        subtitle = "Thicker color indicates higher levels of social capital index")
 
@@ -173,10 +234,17 @@ plot_usmap(data = soccap_county, include = c("OR"),
 
 ```
 
+
 Visualization #3: Regressions {data-icon="fa-signal"}
 ===================================== 
-Column 1 {data-width=400}
------------------------------------------------------------------------
+Description {.sidebar}
+----------------------------------------------------------------------
+**Visualization #3**
+
+Column {.tabset}
+----------------------------------------------------------------------
+
+#Draft Regression Model
 
 ```{r}
 soccap_covid_clean %<>%
@@ -197,8 +265,6 @@ model1a <- lm(positivity ~ state_level_index, data = soccap_covid_clean)
 summary(model1a)
 ```
 
-Column 2 {data-width=400}
------------------------------------------------------------------------
 ```{r}
 model2a <- lm(fatality ~ state_level_index, data = soccap_covid_clean)
 model2b <- lm(fatality ~ family_unity + family_interaction + social_support + community_health + institutional_health + collective_efficacy + philanthropic_health, data = soccap_covid_clean)
