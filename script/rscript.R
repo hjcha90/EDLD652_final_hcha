@@ -60,7 +60,8 @@ state_covid_altogether <- data_plota %>%
   theme_minimal()
 state_covid_altogether
 
-
+#Nice flow of work! Its alittle hard to see the number of covid deaths column due to the scaling and and the number of total_test_results.
+#If it doesnt clutter the plot too much and the data is present it may help to break up total_test_results into positive and negative
 
 
 soccap_covid_clean <- soccap_covid %>% 
@@ -96,6 +97,7 @@ plot_usmap(data = soccap_county, include = c("CA", "OR", "WA"),
   labs(title = "County-Level Overall Social Capital Index of Western US States",
        subtitle = "Thicker color indicates higher levels of social capital index")
 
+
 plot_usmap(data = soccap_covid, regions = "states", values = "family_unity", labels = TRUE) +
   scale_fill_continuous(low = "red", 
                         high = "blue") + 
@@ -104,6 +106,7 @@ plot_usmap(data = soccap_covid, regions = "states", values = "family_unity", lab
   labs(title = "State-Level Family Unity Subindex",
        subtitle = "Thicker color indicates higher levels of social capital index")
 
+#The "Thicker color" distinction was hard to grasp but I appreciated the color red at low and blue at high  
 
 plot_usmap(data = soccap_covid, regions = "states", values = "state_level_index", labels = TRUE) +
   scale_fill_continuous(low = "white", 
@@ -113,7 +116,11 @@ plot_usmap(data = soccap_covid, regions = "states", values = "state_level_index"
   theme(legend.position = "none") + 
   labs(title = "2000")
 
+#A little dificult to follow but should be remedied with some comments here and there! 
 
+
+
+#start of visualisation 3?
 soccap_covid_clean %<>%
   mutate(positivity = confirmed / total_test_results, fatality = deaths / confirmed) 
 
@@ -144,10 +151,12 @@ soccap_covid_clean %>%
        y = "Fatality Rate") + 
   theme(panel.background = element_rect(color = "black", fill = "white")) 
 
-
+#Nice use of the regression model, very timely and useful visualisation! I'm not qute sure the multiple regression is going to be used for but It would be helpful to add the R^2 value from model2a in the graph to show goodness of fit. 
+#i think using str() to check the structure of the model and directly index using summary(model2a)$r.squared would work? 
 
 
 summary(model2a)
 summary(model2b)
+
 
 
