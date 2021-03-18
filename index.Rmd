@@ -18,20 +18,28 @@ library(usmap)
 library(ggpubr)
 library(reactable)
 library(magrittr)
+library(colorblindr)
+library(tidytext)
 ```
 
 
 ```{r load data}
 covid <- import(here("data", "covid-data-01-30-2021.csv")) %>% 
-  clean_names() %>% 
-  as_tibble() #load covid data
+  clean_names() %>%
+  as_tibble() %>% 
+  mutate(population = as.numeric(population)) #load covid data
+
+state_region <- import(here("data", "state_reg_div.xlsx")) %>% 
+  clean_names() %>%
+  as_tibble() #load state level social capital data 
 
 soccap <- import(here("data", "social-capital-project-state-index.xlsx")) %>% 
   clean_names() %>%
   as_tibble() #load state level social capital data 
 
 soccap_covid <- soccap %>% 
-  left_join(covid, by = c("state" = "province_state"))
+  left_join(covid, by = c("state" = "province_state")) %>% 
+  left_join(state_region)
 
 soccap_county <- import(here("data", "social-capital-project-county-index.xlsx")) %>% 
   clean_names() %>% 
@@ -47,35 +55,30 @@ Raw Data {data-icon="fa-table"}
 What is this? {.sidebar}
 ----------------------------------------------------------------------
 
+**Background**
+
+Social capital is defined as "connections among individuals – social networks and the norms of reciprocity and trustworthiness that arise from them." [(Putnam, 2000: 19).](https://doi.org/10.1007/978-1-349-62965-7_12) Since the introduction of social capital in social science, many other disciplines vigorously examined the impact of social capital on a variety of socioeconomic factors [(Chilenski & Summers, 2016).](https://doi.org/10.1007/978-3-319-33264-2_5) 
+
+
+**Agenda**
+
+This visualization project aims to examine the relationship between social capital and Covid-19 for each U.S. state. It aimed for scholarly audiences in the realm of public policy.
+
+
 **Data Source**
 
-The visualizations utilize data from two different sources:
+This proejct utilize datas from two different sources:
 
-1) State-Level Social Capital Index: [Social Capital Project by the United States Congress Joint Economic Committee](https://www.worldvaluessurvey.org/WVSNewsShowMore.jsp?evYEAR=2020&evMONTH=-1)
+1) State-Level Social Capital Index: [Social Capital Project by the United States Congress Joint Economic Committee](https://www.jec.senate.gov/public/index.cfm/republicans/2018/4/the-geography-of-social-capital-in-america)
 
 2) State-Level Covid-19 Statistics: [COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University](https://github.com/CSSEGISandData/COVID-19)
-
-**Key Variables**
-
-**Visualization #1**
-
-Covid-19 testing, cases, and deaths by each state.
-
-**Visualization #2**
-
-Mapping state-level social Capital index.
-
-**Visualization #3**
-
-Regressions examining the relationship between social capital index and Covid-19 metrics.
-
 
 Column {.tabset}
 -----------------------------------------------------------------------
 ### Raw Data
 ```{r}
 soccap_covid_clean <- soccap_covid %>% 
-  select(state, fips_code, 
+  select(state, fips_code, region, population,
          state_level_index, 
          family_unity, family_interaction, social_support, community_health, institutional_health, collective_efficacy, philanthropic_health,
          total_test_results,
@@ -92,17 +95,147 @@ Description {.sidebar}
 
 **Visualization #1**
 
+This plot visualizes the performance metrics related to Covid-19 for each state in the United States. 
+
+The first metric, **Fatality**, is also referred to as Case Fatality Ratio (CFR). This metric estimates the proportion of deaths among identified confirmed cases.
+
+The second metric, **Positivity**, estimates the proportion of identified confirmed relative to the size of population for each state.
+
+Consequently, at this early stage of the pandemic, most estimates of fatality ratios have been based on cases detected through surveillance and calculated using crude methods, giving rise to widely variable estimates of CFR by state.
 
 Column {.tabset}
 -----------------------------------------------------------------------
 
-### Initial Draft
+### Final Plot
+```{r}
+#Not using raw numbers, rather trying to see performance metrics of Covid-19
+
+data_plotb <- soccap_covid_clean %>%
+  mutate(perf_Positivity = confirmed * 100 / population,
+         perf_Fatality = deaths * 100 / confirmed) %>%
+  pivot_longer(cols = starts_with("perf"),
+               names_to = "type",
+               names_prefix = "perf_",
+               values_to = "count") %>% 
+  select(state, region, type, count)
+
+hlines <- data_plotb %>%
+  group_by(type) %>% 
+  summarise(m = mean(count))
+
+state_covid_test_perf <- data_plotb %>%
+  mutate(state = reorder_within(state, count, type)) %>%
+  mutate(type = factor(type, levels=c("Positivity", "Fatality"))) %>%
+  ggplot(aes(state, count, fill = region)) +
+  geom_col() + 
+  geom_hline(data = hlines, 
+             aes(yintercept = m),
+             linetype = "dotted",
+             alpha = 0.7) + 
+  facet_wrap(~type, scales = "free_y") + 
+  coord_flip() +
+  scale_x_reordered() +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(title = "Which States Have Suffered from Covid-19 Most?",
+       subtitle = "In Terms of Covid-19 Fatality abd Positivity",
+       caption = "Dotted lines represent average fatality and positivity across states.",
+       x = NULL,
+       y = "Ratio (in %)") +
+  theme_minimal()
+
+state_covid_test_perf + scale_fill_OkabeIto()
+
+# 
+#   geom_vline(data = data.frame(x = seq(0,5,1)),
+#     aes(xintercept = x),
+#         color = "gray80",
+#         alpha = .6
+#              ) +
+#   geom_hline(aes(yintercept = 0.5),
+#              alpha = .6,
+#              color = "gray80") +
+# 
+
+
+
+# state_covid_case <- data_plota %>%
+#   mutate(state = fct_reorder(state, confirmed))  %>% 
+#   ggplot(aes(state, confirmed/1000)) +
+#   geom_col(fill = "darkorange", alpha = 0.7) + 
+#   coord_flip() +
+#   labs(x = " ", subtitle = "Cases", y = "Counts by 1000") + 
+#   theme_minimal()
+# 
+# state_covid_death <- data_plota %>%
+#   mutate(state = fct_reorder(state, deaths))  %>% 
+#   ggplot(aes(state, deaths/1000)) +
+#   geom_col(fill = "brown1", alpha = 0.7) + 
+#   coord_flip() + 
+#   labs(x = " ", subtitle = "Deaths", y = "") + 
+#   theme_minimal()
+# 
+# 
+# state_covid_perf <- data_plotb %>% 
+#   ggplot(aes(state, count)) +
+#   geom_col(aes(fill=region)) + 
+#   coord_flip() +
+#   scale_fill_OkabeIto(name = "region") + 
+#   labs(x = "State", subtitle = "Tests", y="") + 
+#   facet_wrap(~type, ncol = 4) + 
+#   theme_minimal()
+# 
+# state_covid_perf
+
+```
+
+
+### Revised Plot
 
 ```{r}
-#Plot part 1. Covid cases, deaths, and testing by state
+#Covid cases, deaths, and testing by state
 data_plota <- soccap_covid_clean %>%
   select(state, confirmed, deaths, total_test_results)
 
+
+
+state_covid_test <- data_plota %>%
+  mutate(state = fct_reorder(state, total_test_results))  %>% 
+  ggplot(aes(state, total_test_results/1000)) +
+  geom_col(fill = "deepskyblue3", alpha = 0.7) + 
+  coord_flip() +
+  labs(x = "State", subtitle = "Tests", y="") + 
+  theme_minimal()
+
+state_covid_case <- data_plota %>%
+  mutate(state = fct_reorder(state, confirmed))  %>% 
+  ggplot(aes(state, confirmed/1000)) +
+  geom_col(fill = "darkorange", alpha = 0.7) + 
+  coord_flip() +
+  labs(x = " ", subtitle = "Cases", y = "Counts by 1000") + 
+  theme_minimal()
+
+state_covid_death <- data_plota %>%
+  mutate(state = fct_reorder(state, deaths))  %>% 
+  ggplot(aes(state, deaths/1000)) +
+  geom_col(fill = "brown1", alpha = 0.7) + 
+  coord_flip() + 
+  labs(x = " ", subtitle = "Deaths", y = "") + 
+  theme_minimal()
+
+covid_plotsa <- ggarrange(state_covid_test,
+                         state_covid_case,
+                         state_covid_death,
+                         ncol = 3,
+                         nrow = 1)
+covid_plotsa
+
+```
+
+
+### Initial Draft
+
+```{r}
+#Covid cases, deaths, and testing by state
 
 state_covid_altogether <- data_plota %>%
   mutate(state = fct_reorder(state, total_test_results))  %>% 
@@ -112,87 +245,10 @@ state_covid_altogether <- data_plota %>%
   scale_fill_brewer(palette = "Dark2") + 
   coord_flip() + 
   theme_minimal()
+
 state_covid_altogether
 
 ```
-
-### Revised Plot
-
-```{r}
-#Plot part 1. Covid cases, deaths, and testing by state
-
-state_covid_test <- data_plota %>%
-  mutate(state = fct_reorder(state, total_test_results))  %>% 
-  ggplot(aes(state, total_test_results/1000)) +
-  geom_col(fill = "deepskyblue3", alpha = 0.7) + 
-  coord_flip() +
-  labs(x = "State", subtitle = "Tests", y="") + 
-  theme_minimal()
-
-state_covid_case <- data_plota %>%
-  mutate(state = fct_reorder(state, confirmed))  %>% 
-  ggplot(aes(state, confirmed/1000)) +
-  geom_col(fill = "darkorange", alpha = 0.7) + 
-  coord_flip() +
-  labs(x = " ", subtitle = "Cases", y = "Counts by 1000") + 
-  theme_minimal()
-
-state_covid_death <- data_plota %>%
-  mutate(state = fct_reorder(state, deaths))  %>% 
-  ggplot(aes(state, deaths/1000)) +
-  geom_col(fill = "brown1", alpha = 0.7) + 
-  coord_flip() + 
-  labs(x = " ", subtitle = "Deaths", y = "") + 
-  theme_minimal()
-
-covid_plots <- ggarrange(state_covid_test,
-                         state_covid_case,
-                         state_covid_death,
-                         ncol = 3,
-                         nrow = 1)
-covid_plots
-
-```
-
-### Final Plot
-```{r}
-#Plot part 1. Covid cases, deaths, and testing by state
-data_plota <- soccap_covid_clean %>%
-  select(state, confirmed, deaths, total_test_results)
-
-state_covid_test <- data_plota %>%
-  mutate(state = fct_reorder(state, total_test_results))  %>% 
-  ggplot(aes(state, total_test_results/1000)) +
-  geom_col(fill = "deepskyblue3", alpha = 0.7) + 
-  coord_flip() +
-  labs(x = "State", subtitle = "Tests", y="") + 
-  theme_minimal()
-
-state_covid_case <- data_plota %>%
-  mutate(state = fct_reorder(state, confirmed))  %>% 
-  ggplot(aes(state, confirmed/1000)) +
-  geom_col(fill = "darkorange", alpha = 0.7) + 
-  coord_flip() +
-  labs(x = " ", subtitle = "Cases", y = "Counts by 1000") + 
-  theme_minimal()
-
-state_covid_death <- data_plota %>%
-  mutate(state = fct_reorder(state, deaths))  %>% 
-  ggplot(aes(state, deaths/1000)) +
-  geom_col(fill = "brown1", alpha = 0.7) + 
-  coord_flip() + 
-  labs(x = " ", subtitle = "Deaths", y = "") + 
-  theme_minimal()
-
-covid_plots <- ggarrange(state_covid_test,
-                         state_covid_case,
-                         state_covid_death,
-                         ncol = 3,
-                         nrow = 1)
-covid_plots
-
-```
-
 
 
 Visualization #2: Social Capital Index {data-icon="fa-signal"}
@@ -202,25 +258,69 @@ Description {.sidebar}
 
 **Visualization #2**
 
+This plot visualizes the distribution of social capital index across the US.
+
+The state social capital index includes seven dimensions: 
+
+**1)Family Unity**
+
+**2)Family Interaction**
+
+**3)Social Support**
+
+**4)Community Health**
+
+**5)Institutional Health**
+
+**6)Collective Efficacy**
+
+**7)Philanthropic Health**
+
+
+The 12 states with the highest social capital scores are distributed across two continuous blocs: nine states running from Utah, through Wyoming and Colorado, across the Dakotas and Nebraska, and over to Iowa, Minnesota, and Wisconsin; and the three Northern New England states of Maine, New Hampshire, and Vermont. These states tend to rank highly across all seven subindices as well. Utah has the highest social capital score, followed by Minnesota and Wisconsin.
+
+Of the 11 states with the lowest levels of social capital, ten of them fall within a contiguous bloc of states running from Nevada, across the Southwest and South over to Georgia and Florida. New York is the only state in the bottom 11 that is outside this group. Louisiana has the lowest social capital score, followed by Nevada, Arizona, and New Mexico.
+
 
 Column {.tabset}
 -----------------------------------------------------------------------
-### State Level Index
+### State Level Social Capital Index - Final
     
+```{r}
+plot_usmap(data = soccap_covid_clean, regions = "states", values = "state_level_index", labels = FALSE) +
+  scale_fill_continuous(low = "white", 
+                        high = "steelblue1") + 
+  theme(panel.background = element_rect(color = "black", fill = "white")) + 
+  theme(legend.position = "none") +
+  scale_fill_gradient2(low = "red", 
+                         mid = "white", 
+                         midpoint = 0, 
+                         high = "blue", 
+                         name = "Social Capital Index") +
+  labs(title = "State-Level Overall Social Capital Index",
+       subtitle = "Index computed by taking the weighted sum of the seven standard scores and then standardizing.",
+       caption =  "1) A score of 1.0 means one standard deviations above the mean index score across states. \n 2) Social Capital Index scores range from -2.2 to 2.1. ") + 
+    theme(legend.position = "right",
+          panel.background = element_rect(color = "white"))
+
+#I spent so much time trying to deal with state labels getting smashed to no avail... ggrepel doesn't seem to work well with usmap package
+
+```
+
+
+### State Level Social Capital Index - Draft
+
 ```{r}
 plot_usmap(data = soccap_covid_clean, regions = "states", values = "state_level_index", labels = TRUE) +
   scale_fill_continuous(low = "white", 
                         high = "steelblue1") + 
   theme(panel.background = element_rect(color = "black", fill = "white")) + 
   theme(legend.position = "none") + 
-  scale_fill_distiller(palette = "RdBu", direction = -1) +
-  theme(legend.position = c(1, 3), plot.title = element_text(hjust=1)) +
   labs(title = "State-Level Overall Social Capital Index",
        subtitle = "Thicker color indicates higher levels of social capital index")
-
 ```
-    
-### County Level Index in Oregon
+
+### Draft County Level Index in Oregon - Now Defunct
 
 ```{r}
 plot_usmap(data = soccap_county, include = c("OR"), 
@@ -235,16 +335,43 @@ plot_usmap(data = soccap_county, include = c("OR"),
 ```
 
 
+
 Visualization #3: Regressions {data-icon="fa-signal"}
 ===================================== 
 Description {.sidebar}
 ----------------------------------------------------------------------
 **Visualization #3**
 
+The plot visualizes the regression models examining the relationship between state-level social capital index and Covid-19 metrics. The regression lines display confidence interval of 0.95.
+
 Column {.tabset}
 ----------------------------------------------------------------------
 
-#Draft Regression Model
+### Final Plot - Overall Social Capital Index
+
+```{r}
+soccap_covid_clean2 <- soccap_covid_clean %>%
+  mutate(perf_Positivity = confirmed * 100 / population,
+         perf_Fatality = deaths * 100 / confirmed)
+
+soccap_covid_clean2 %>%
+  pivot_longer(cols = starts_with("perf"),
+               names_to = "Metrics",
+               names_prefix = "perf_",
+               values_to = "ratio") %>% 
+  ggplot(aes(state_level_index, ratio, color = Metrics)) + 
+  geom_point(palette = "jco") + 
+  geom_smooth(method = "lm", se = TRUE) +
+  stat_regline_equation(aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))) +
+    labs(title = "Does BetterSocial Capital Index Lead to Better Covid-19 Metrics?",
+         subtitle = "In Terms of Covid-19 Fatality abd Positivity",
+       x = "State Level Social Capital Index",
+       y = "Ratio (in %)") + 
+  theme_minimal()
+
+```
+
+### Draft Regression Plot 1
 
 ```{r}
 soccap_covid_clean %<>%
@@ -260,10 +387,15 @@ soccap_covid_clean %>%
   theme(panel.background = element_rect(color = "black", fill = "white")) 
 ```
 
+### Draft Regression Summary 1
+
 ```{r}
 model1a <- lm(positivity ~ state_level_index, data = soccap_covid_clean)
 summary(model1a)
 ```
+
+
+### Draft Regression Plot 2
 
 ```{r}
 model2a <- lm(fatality ~ state_level_index, data = soccap_covid_clean)
@@ -278,6 +410,9 @@ soccap_covid_clean %>%
        y = "Fatality Rate (%)") + 
   theme(panel.background = element_rect(color = "black", fill = "white")) 
 ```
+
+### Draft Regression Summary 2
+
 
 ```{r}
 model2a <- lm(fatality ~ state_level_index, data = soccap_covid_clean)
